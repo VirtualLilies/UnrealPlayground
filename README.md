@@ -1,5 +1,5 @@
 # UnrealPlayground
-Project used for testing out different features and in-engine solutions in terms of **shaders, blueprints, various tricks** etc.
+Project used for testing out different features and in-engine solutions in terms of **shaders, blueprints, various tricks** etc. Project is **C++** based since every single blueprint setup will get moved to C++. I simpply plan to use it as a C++ learning resource for myself.
 
 Most of the stuff found here was found across **youtube, various dev blogs** etc. With every new feature added I always double check the setup, add additional commetnts or even add my own stuff on top of it.
 **UnrealPlayground** project is a aimed to be great **learning resource** and somewhat cheat-sheet when it comes to getting already setup materials and blueprints, ready to be migrated over to different project.
