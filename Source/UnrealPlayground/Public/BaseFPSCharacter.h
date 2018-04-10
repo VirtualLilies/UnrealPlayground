@@ -45,6 +45,10 @@ public:
 	UFUNCTION()
 		void StopJump();
 
+	// Function that handles firing projectiles.
+	UFUNCTION()
+		void Fire();
+
 	// FPS camera.
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 		UCameraComponent* FPSCamera;
@@ -52,6 +56,16 @@ public:
 	// First-person mesh (arms), visible only to the owning player.
 	UPROPERTY(VisibleDefaultsOnly, Category = "Components")
 		USkeletalMeshComponent* FPSMesh;
+
+	/*The EditAnywhere specifier allow you to change the value of the muzzle offset within the Defaults mode of the Blueprint Editor or within the Details tab for any instance of the character. The BlueprintReadWrite specifier allows you to get and set the value of the muzzle offset within a Blueprint.*/
+	// Gun muzzle's offset from the camera location.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gameplay")
+		FVector MuzzleOffset;
+
+	/*The EditDefaultsOnly specifier means that you will only be able to set the projectile class as a default on the Blueprint, not on each instance of the Blueprint.*/
+	// Projectile class to spawn.
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
+		TSubclassOf<class ABaseFPSProjectile> ProjectileClass;
 
 	
 };
