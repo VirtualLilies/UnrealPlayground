@@ -14,14 +14,14 @@ ABaseFPSProjectile::ABaseFPSProjectile()
 	// Use sphere as simple collision representation.
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
 
-	// Bind OnHit event.
-	CollisionComp->OnComponentHit.AddDynamic(this, &ABaseFPSProjectile::OnHit);
-
 	// Set sphere collision radius.
 	CollisionComp->InitSphereRadius(5.0f);
 
 	// Setup projectiles collision based on our custom collision profiles.
 	CollisionComp->BodyInstance.SetCollisionProfileName(TEXT("Projectile"));
+
+	// Bind OnHit event.
+	CollisionComp->OnComponentHit.AddDynamic(this, &ABaseFPSProjectile::OnHit);
 
 	// Set collision component as root comp.
 	RootComponent = CollisionComp;
@@ -33,7 +33,7 @@ ABaseFPSProjectile::ABaseFPSProjectile()
 	// Setup static mesh comp.
 	StaticMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ProjectileMesh"));
 	StaticMeshComp->SetupAttachment(CollisionComp);
-	StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	StaticMeshComp->BodyInstance.SetCollisionProfileName(TEXT("NoCollision"));
 
 	// Use this component to drive projectile's movement.
 	ProjectileMovementComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
@@ -44,10 +44,10 @@ ABaseFPSProjectile::ABaseFPSProjectile()
 	ProjectileMovementComp->MaxSpeed = 5000.0f;
 	ProjectileMovementComp->bRotationFollowsVelocity = true;
 	ProjectileMovementComp->bShouldBounce = true;
-	ProjectileMovementComp->ProjectileGravityScale = 0.0f;
+	ProjectileMovementComp->ProjectileGravityScale = 1.0f;
 
 	// Destroy after given seconds.
-	InitialLifeSpan = 3.0f;
+	InitialLifeSpan = 2.0f;
 
 }
 
@@ -74,12 +74,11 @@ void ABaseFPSProjectile::FireInDirection(const FVector & ShootDirection)
 // Function that is called when projectile hits something.
 void ABaseFPSProjectile::OnHit(UPrimitiveComponent * HitComponent, AActor * OtherActor, UPrimitiveComponent * OtherComponent, FVector NormalImpulse, const FHitResult & Hit)
 {
-	// TODO the function doesn't get called.
- 	if ((OtherActor != NULL) && (OtherActor != this) && (OtherComponent != NULL) && OtherComponent->IsSimulatingPhysics())
- 	{
- 		OtherComponent->AddImpulseAtLocation(GetVelocity() * 100.0f, GetActorLocation());
- 		Destroy();
- 	}
+	// Only add impulse and destroy projectile if we hit a physics
+	if ((OtherActor != NULL) && (OtherActor != this) && (OtherComponent != NULL) && OtherComponent->IsSimulatingPhysics())
+	{
+		OtherComponent->AddImpulseAtLocation(GetVelocity() * 100.0f, GetActorLocation());
+	}
 
 }
 
