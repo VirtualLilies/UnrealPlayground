@@ -6,43 +6,35 @@
 #include "GameFramework/Actor.h"
 #include "BaseFPSProjectile.generated.h"
 
-class USphereComponent;
 class UProjectileMovementComponent;
-class UStaticMeshComponent;
+class USphereComponent;
 
 UCLASS()
-class UNREALPLAYGROUND_API ABaseFPSProjectile : public AActor
+class ABaseFPSProjectile : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
-	// Sets default values for this actor's properties
-	ABaseFPSProjectile();
-
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-	
-	// Function that initializes the projectile's velocity in the shoot direction.
-	void FireInDirection(const FVector& ShootDirection);
-
-	// Function that is called when the projectile hits something.
-	UFUNCTION()
-		void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
 
-	// Sphere collision component.
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
+	/** Sphere collision component */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
 		USphereComponent* CollisionComp;
 
-	// Projectile movement comp.
+	/** Projectile movement component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
-		UProjectileMovementComponent* ProjectileMovementComp;
+		UProjectileMovementComponent* ProjectileMovement;
 
-	// Projectile's static mesh component.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-		UStaticMeshComponent* StaticMeshComp;
+public:
 
+	ABaseFPSProjectile();
+
+	/** called when projectile hits something */
+	UFUNCTION()
+		void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	/** Returns CollisionComp subobject **/
+	USphereComponent* GetCollisionComp() const { return CollisionComp; }
+
+	/** Returns ProjectileMovement subobject **/
+	UProjectileMovementComponent* GetProjectileMovement() const { return ProjectileMovement; }
 };

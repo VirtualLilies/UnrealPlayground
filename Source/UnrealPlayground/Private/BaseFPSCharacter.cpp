@@ -1,11 +1,12 @@
 // Copyright C 2018 Tomasz Figas
 
 #include "BaseFPSCharacter.h"
-#include "Components/InputComponent.h"
+#include "BaseFPSProjectile.h"
+#include "Animation/AnimInstance.h"
+#include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Runtime/Engine/Classes/Camera/CameraComponent.h"
-#include "Components/SkeletalMeshComponent.h"
-#include "BaseFPSProjectile.h" // In order for the projectile class to be used from CharacterClass we need to include projectile class.
+#include "Kismet/GameplayStatics.h"
+#include "Components/PawnNoiseEmitterComponent.h"
 
 
 // Sets default values
@@ -17,60 +18,26 @@ ABaseFPSCharacter::ABaseFPSCharacter()
 	//Take control of the default Player
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
-	// Create a first person camera component.
-	FPSCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
+	// Create a CameraComponent	
+	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
+	CameraComponent->SetupAttachment(GetCapsuleComponent());
+	CameraComponent->RelativeLocation = FVector(0, 0, BaseEyeHeight); // Position the camera
+	CameraComponent->bUsePawnControlRotation = true;
 
-	// Attach the camera component to our capsule component.
-	FPSCamera->SetupAttachment(GetCapsuleComponent());
+	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
+	Mesh1PComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh"));
+	Mesh1PComponent->SetupAttachment(CameraComponent);
+	Mesh1PComponent->CastShadow = false;
+	Mesh1PComponent->RelativeRotation = FRotator(2.0f, -15.0f, 5.0f);
+	Mesh1PComponent->RelativeLocation = FVector(0, 0, -160.0f);
 
-	// Position the camera slightly above the eyes.
-	FPSCamera->SetRelativeLocation(FVector(0.0f, 0.0f, BaseEyeHeight));
-
-	// Allow the pawn to control camera rotation.
-	FPSCamera->bUsePawnControlRotation = true;
-
-	// Create a first person mesh component for the owning player.
-	FPSMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FirstPersonMesh"));
-
-	// Only the owning player sees this mesh.
-	FPSMesh->SetOnlyOwnerSee(true);
-
-	// Attach the FPS mesh to the FPS camera.
-	FPSMesh->SetupAttachment(FPSCamera);
-
-	// Setup relative location and rotation of the component.
-	FPSMesh->SetRelativeLocation(FVector(-10.0f, -5.5f, -145.0f));
-	FPSMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
-
-	// Disable some environmental shadowing to preserve the illusion of having a single mesh.
-	FPSMesh->bCastDynamicShadow = false;
-	FPSMesh->CastShadow = false;
+	// Create a gun mesh component
+	GunMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FP_Gun"));
+	GunMeshComponent->CastShadow = false;
+	GunMeshComponent->SetupAttachment(Mesh1PComponent, "GripPoint");
 
 	// The owning player doesn't see the regular (third-person) body mesh.
 	GetMesh()->SetOwnerNoSee(true);
-
-}
-
-// Called when the game starts or when spawned
-void ABaseFPSCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// Debug message to verify that BaseFPSCharacter class is being used.
-	if (GEngine)
-	{
-		// Put up a debug message for five seconds. The -1 "Key" value (first argument) indicates that we will never need to update or refresh this message.
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Using BaseFPSCharacter class."));
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("BaseFPSCharacter loaded."));
-	
-}
-
-// Called every frame
-void ABaseFPSCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
 
 }
 
@@ -88,8 +55,6 @@ void ABaseFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis("MouseY", this, &ABaseFPSCharacter::AddControllerPitchInput);
 
 	// Setup "action" bindings.
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ABaseFPSCharacter::StartJump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ABaseFPSCharacter::StopJump);
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ABaseFPSCharacter::Fire);
 
 }
@@ -108,48 +73,24 @@ void ABaseFPSCharacter::MoveRight(float Value)
 	AddMovementInput(Direction, Value);
 }
 
-void ABaseFPSCharacter::StartJump()
-{
-	bPressedJump = true;
-}
-
-void ABaseFPSCharacter::StopJump()
-{
-	bPressedJump = false;
-}
 
 void ABaseFPSCharacter::Fire()
 {
-	// Attempt to fire a projectile.
+	// try and fire a projectile
 	if (ProjectileClass)
 	{
-		// Get camera transform.
-		FVector CameraLocation;
-		FRotator CameraRotation;
-		GetActorEyesViewPoint(CameraLocation, CameraRotation);
+		FVector MuzzleLocation = GunMeshComponent->GetSocketLocation("Muzzle");
+		FRotator MuzzleRotation = GunMeshComponent->GetSocketRotation("Muzzle");
 
-		// Transform MuzzleOffset from camera space to world space.
-		FVector MuzzleLocation = CameraLocation + FTransform(CameraRotation).TransformVector(MuzzleOffset);
-		FRotator MuzzleRotation = CameraRotation;
+		//Set Spawn Collision Handling Override
+		FActorSpawnParameters ActorSpawnParams;
+		ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-		// Skew the aim to be slightly upwards.
-		MuzzleRotation.Pitch += 10.0f;
-		UWorld* World = GetWorld();
-		if (World)
-		{
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = this;
-			SpawnParams.Instigator = Instigator;
+		// Set instigator so we know how is spawning the projectile
+		ActorSpawnParams.Instigator = this;
 
-			// Spawn the projectile at the muzzle.
-			ABaseFPSProjectile* Projectile = World->SpawnActor<ABaseFPSProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
-
-			if (Projectile)
-			{
-				// Set the projectile's initial trajectory.
-				FVector LaunchDirection = MuzzleRotation.Vector();
-				Projectile->FireInDirection(LaunchDirection);
-			}
-		}
+		// spawn the projectile at the muzzle
+		GetWorld()->SpawnActor<ABaseFPSProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, ActorSpawnParams);
 	}
+
 }
