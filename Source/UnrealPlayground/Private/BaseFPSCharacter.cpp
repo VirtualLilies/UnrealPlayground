@@ -12,9 +12,6 @@
 // Sets default values
 ABaseFPSCharacter::ABaseFPSCharacter()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-
 	//Take control of the default Player
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
@@ -29,7 +26,7 @@ ABaseFPSCharacter::ABaseFPSCharacter()
 	Mesh1PComponent->SetupAttachment(CameraComponent);
 	Mesh1PComponent->CastShadow = false;
 	Mesh1PComponent->RelativeRotation = FRotator(2.0f, -15.0f, 5.0f);
-	Mesh1PComponent->RelativeLocation = FVector(0, 0, -160.0f);
+	Mesh1PComponent->RelativeLocation = FVector(0, 0, -155.0f);
 
 	// Create a gun mesh component
 	GunMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FP_Gun"));
@@ -56,7 +53,7 @@ void ABaseFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	// Setup "action" bindings.
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ABaseFPSCharacter::Fire);
-
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 }
 
 void ABaseFPSCharacter::MoveForward(float Value)
@@ -77,7 +74,7 @@ void ABaseFPSCharacter::MoveRight(float Value)
 void ABaseFPSCharacter::Fire()
 {
 	// try and fire a projectile
-	if (ProjectileClass)
+	if (ProjectileClass != NULL)
 	{
 		FVector MuzzleLocation = GunMeshComponent->GetSocketLocation("Muzzle");
 		FRotator MuzzleRotation = GunMeshComponent->GetSocketRotation("Muzzle");
@@ -93,4 +90,20 @@ void ABaseFPSCharacter::Fire()
 		GetWorld()->SpawnActor<ABaseFPSProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, ActorSpawnParams);
 	}
 
+	// try and play the sound if specified
+	if (FireSound != NULL)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
+	}
+
+	// try and play a firing animation if specified
+	if (FireAnimation != NULL)
+	{
+		// Get the animation object for the arms mesh
+		UAnimInstance* AnimInstance = Mesh1PComponent->GetAnimInstance();
+		if (AnimInstance != NULL)
+		{
+			AnimInstance->PlaySlotAnimationAsDynamicMontage(FireAnimation, "Arms", 0.0f);
+		}
+	}
 }
